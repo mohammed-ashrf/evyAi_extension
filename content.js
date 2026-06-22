@@ -1,6 +1,7 @@
 const elements = new Map();
 const ELEMENT_LIMIT = 10;
 let lastElementId = null;
+let focusOutTimer = null;
 
 function trimMap() {
     if (elements.size <= ELEMENT_LIMIT) return;
@@ -14,8 +15,26 @@ function trimMap() {
     }
 }
 
+document.addEventListener('focusout', (e) => {
+    try {
+        const el = e.target;
+        if (el.getAttribute('contenteditable') !== 'true' || el.getAttribute('role') !== 'textbox') return;
+        if (!el.dataset.ceId) return;
+
+        chrome.runtime.sendMessage({type: 'FOCUS_OUT'}).catch(() => {});
+        if (focusOutTimer) clearTimeout(focusOutTimer);
+        focusOutTimer = setTimeout(() => {
+            chrome.runtime.sendMessage({type: 'CLEAR_CONTEXT'}).catch(() => {});
+        }, 2000);
+    } catch {}
+});
+
 document.addEventListener('focusin', (e) => {
     try {
+        if (focusOutTimer) { 
+            clearTimeout(focusOutTimer);
+            focusOutTimer = null;
+        }
         const el = e.target;
         if (el.getAttribute('contenteditable') !== 'true' || el.getAttribute('role') !== 'textbox') return;
 
