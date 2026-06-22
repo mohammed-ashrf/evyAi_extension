@@ -1,4 +1,17 @@
 const elements = new Map();
+const ELEMENT_LIMIT = 10;
+let lastElementId = null;
+
+function trimMap() {
+    if (elements.size <= ELEMENT_LIMIT) return;
+    const iter = elements.keys();
+    while (elements.size > ELEMENT_LIMIT) {
+        const id = iter.next().value;
+        if (id !== lastElementId) {
+            elements.delete(id);
+        }
+    }
+}
 
 document.addEventListener('focusin', (e) => {
     try {
@@ -6,8 +19,10 @@ document.addEventListener('focusin', (e) => {
         if (el.getAttribute('contenteditable') !== 'true' || el.getAttribute('role') !== 'textbox') return;
 
         const id = crypto.randomUUID();
+        lastElementId = id;
         el.dataset.ceId = id;
         elements.set(id, el);
+        trimMap();
 
         const container = el.closest('[role="listitem"]');
 
