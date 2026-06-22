@@ -6,9 +6,10 @@ function trimMap() {
     if (elements.size <= ELEMENT_LIMIT) return;
     const iter = elements.keys();
     while (elements.size > ELEMENT_LIMIT) {
-        const id = iter.next().value;
-        if (id !== lastElementId) {
-            elements.delete(id);
+        const { value, done } = iter.next();
+        if (done) break;
+        if ( value !== lastElementId) {
+            elements.delete(value);
         }
     }
 }
