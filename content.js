@@ -19,9 +19,13 @@ document.addEventListener('focusin', (e) => {
         const el = e.target;
         if (el.getAttribute('contenteditable') !== 'true' || el.getAttribute('role') !== 'textbox') return;
 
-        const id = crypto.randomUUID();
+
+        let id = el.dataset.ceId;
+        if (!id) {
+            id = crypto.randomUUID();
+            el.dataset.ceId = id;
+        }
         lastElementId = id;
-        el.dataset.ceId = id;
         elements.set(id, el);
         trimMap();
 
