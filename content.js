@@ -2,6 +2,7 @@ const elements = new Map();
 const ELEMENT_LIMIT = 10;
 let lastElementId = null;
 let focusOutTimer = null;
+let suppressFocusIn = false;
 
 function trimMap() {
     if (elements.size <= ELEMENT_LIMIT) return;
@@ -31,6 +32,7 @@ document.addEventListener('focusout', (e) => {
 
 document.addEventListener('focusin', (e) => {
     try {
+        if (suppressFocusIn) return;
         if (focusOutTimer) { 
             clearTimeout(focusOutTimer);
             focusOutTimer = null;
@@ -68,10 +70,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         if (msg.type === 'INSERT_TEXT') {
             const el = elements.get(msg.elementId);
             if (!el) { sendResponse({ error: 'Element not found' }); return; }
+            suppressFocusIn = true;
             el.focus();
             el.textContent = '';
             document.execCommand('insertText', false, msg.text);
             el.dispatchEvent(new Event('input', { bubbles: true }));
+            suppressFocusIn = false;
             sendResponse({ success: true });
         }
     } catch {}
