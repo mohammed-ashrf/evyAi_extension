@@ -1,3 +1,4 @@
+let focusTimer = null;
 chrome.runtime.onInstalled.addListener(() => {
     chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 });
@@ -5,10 +6,16 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (sender.tab) {
         if (msg.type === 'ELEMENT_FOCUSED') {
+            if (focusTimer) { clearTimeout(focusTimer); focusTimer = null; }
             chrome.storage.session.set({ lastContext: msg, lastFocusState: 'focused' }).catch(() => {});
         }
         if (msg.type === 'FOCUS_OUT') {
             chrome.storage.session.set({ lastFocusState: 'defocused' }).catch(() => {});
+            if (focusTimer) clearTimeout(focusTimer);
+            focusTimer = setTimeout(() => {
+                chrome.storage.session.remove(['lastContext', 'lastFocusState']).catch(() => {});
+                chrome.runtime.sendMessage({type: 'CLEAR_CONTEXT'}).catch(() => {});
+            }, 2000);
         }
         if (msg.type === 'CLEAR_CONTEXT') {
             chrome.storage.session.remove(['lastContext', 'lastFocusState']).catch(() => {});

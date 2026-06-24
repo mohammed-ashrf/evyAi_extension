@@ -1,56 +1,37 @@
 const elements = new Map();
-const ELEMENT_LIMIT = 10;
-let lastElementId = null;
-let focusOutTimer = null;
 let suppressFocusIn = false;
 
-function trimMap() {
-    if (elements.size <= ELEMENT_LIMIT) return;
-    const iter = elements.keys();
-    while (elements.size > ELEMENT_LIMIT) {
-        const { value, done } = iter.next();
-        if (done) break;
-        if ( value !== lastElementId) {
-            elements.delete(value);
-        }
-    }
+function safeSlice(str, maxLen) {
+    if (str.length <= maxLen) return str;
+    const cut = str.slice(0, maxLen);
+    const lastGt = cut.lastIndexOf('>');
+    return lastGt > 0 ? cut.slice(0, lastGt + 1) : cut;
 }
 
 document.addEventListener('focusout', (e) => {
     try {
-        const el = e.target;
-        if (el.getAttribute('contenteditable') !== 'true' || el.getAttribute('role') !== 'textbox') return;
-        if (!el.dataset.ceId) return;
-
+        // if (!e.target.isContentEditable) return;
         chrome.runtime.sendMessage({type: 'FOCUS_OUT'}).catch(() => {});
-        if (focusOutTimer) clearTimeout(focusOutTimer);
-        focusOutTimer = setTimeout(() => {
-            chrome.runtime.sendMessage({type: 'CLEAR_CONTEXT'}).catch(() => {});
-        }, 2000);
     } catch {}
 });
 
 document.addEventListener('focusin', (e) => {
     try {
         if (suppressFocusIn) return;
-        if (focusOutTimer) { 
-            clearTimeout(focusOutTimer);
-            focusOutTimer = null;
-        }
+        // if (!e.target.isContentEditable) return;
         const el = e.target;
-        if (el.getAttribute('contenteditable') !== 'true' || el.getAttribute('role') !== 'textbox') return;
-
-
         let id = el.dataset.ceId;
         if (!id) {
             id = crypto.randomUUID();
             el.dataset.ceId = id;
         }
-        lastElementId = id;
         elements.set(id, el);
-        trimMap();
+        if (elements.size > 20) elements.delete(elements.keys().next().value);
 
-        const container = el.closest('[role="listitem"]');
+        let container = el.parentElement;
+        for (let i = 0; i < 15 && container && container !== document.body; i++) {
+            container = container.parentElement;
+        }
 
         if (container) {
             chrome.runtime.sendMessage({
@@ -58,8 +39,9 @@ document.addEventListener('focusin', (e) => {
                 elementId: id,
                 pageUrl: location.href,
                 hostname: location.hostname,
-                containerHtml: container.outerHTML.slice(0, 10000),
-                containerText: container.innerText.slice(0, 5000)
+                editorHtml: safeSlice(el.outerHTML, 50000),
+                containerHtml: safeSlice(container.outerHTML, 200000),
+                containerText: container.innerText.slice(0, 100000)
             });
         }
     } catch {}
